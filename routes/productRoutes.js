@@ -18,4 +18,10 @@ router.patch("/update/:id",upload.single("image"),productController.updateProduc
 // delete product by id
 router.delete("/delete/:id", productController.deleteProductById);
 
+// search by product category
+router.get("/search", productController.search);
+
+// filter by product category
+router.get("/filter", productController.filterByCategory);
+
 module.exports = router;
