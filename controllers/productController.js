@@ -128,8 +128,8 @@ exports.deleteProductById = async (req,res) => {
   }
 }
 
-// search by product category
-exports.search = async (req,res) => {
+//search and filter
+exports.searchAndFilterProducts = async (req, res) => {
   try {
     const { query } = req.query;
 
@@ -137,39 +137,67 @@ exports.search = async (req,res) => {
       return res.status(400).json({ error: "Search query is required" });
     }
 
-    const results = await Product.find({
-      category: { $regex: query, $options: "i" }
+    // Handle multiple comma-separated search terms
+    const terms = query.split(',').map(term => term.trim());
+
+    const orConditions = [];
+
+    terms.forEach(term => {
+      orConditions.push({ title: { $regex: term, $options: 'i' } });
+      orConditions.push({ category: { $regex: term, $options: 'i' } });
     });
 
-    res.status(200).json({ results });
+    const products = await Product.find({ $or: orConditions });
+
+    res.status(200).json({ products });
   } catch (error) {
     console.error("Error searching products:", error);
     res.status(500).json({ error: "Internal server error" });
   }
-}
-
-//filter by product category
-exports.filterByCategory = async (req, res) => {
-  try {
-    const { category } = req.query; // expects /filter?category=electronics
-    console.log('category :- ',category);
-
-    if (!category) {
-      return res.status(400).json({ error: "Category is required" });
-    }
-
-    // Support both single string and comma-separated list
-    const categories = Array.isArray(category)
-      ? category
-      : category.split(',').map(cat => cat.trim());
-
-    const products = await Product.find({
-      category: { $in: categories }
-    });
-
-    res.status(200).json({ products });
-  } catch (error) {
-    console.error("Error filtering products by category:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
 };
+
+// // search by product category
+// exports.search = async (req,res) => {
+//   try {
+//     const { query } = req.query;
+
+//     if (!query) {
+//       return res.status(400).json({ error: "Search query is required" });
+//     }
+
+//     const results = await Product.find({
+//       category: { $regex: query, $options: "i" }
+//     });
+
+//     res.status(200).json({ results });
+//   } catch (error) {
+//     console.error("Error searching products:", error);
+//     res.status(500).json({ error: "Internal server error" });
+//   }
+// }
+
+// //filter by product category
+// exports.filterByCategory = async (req, res) => {
+//   try {
+//     const { category } = req.query; // expects /filter?category=electronics
+//     console.log('category :- ',category);
+
+//     if (!category) {
+//       return res.status(400).json({ error: "Category is required" });
+//     }
+
+//     // Support both single string and comma-separated list
+//     const categories = Array.isArray(category)
+//       ? category
+//       : category.split(',').map(cat => cat.trim());
+
+//     const products = await Product.find({
+//       category: { $in: categories }
+//     });
+
+//     res.status(200).json({ products });
+//   } catch (error) {
+//     console.error("Error filtering products by category:", error);
+//     res.status(500).json({ error: "Internal server error" });
+//   }
+// };

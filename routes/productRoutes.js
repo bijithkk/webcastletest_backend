@@ -19,9 +19,6 @@ router.patch("/update/:id",upload.single("image"),productController.updateProduc
 router.delete("/delete/:id", productController.deleteProductById);
 
 // search by product category
-router.get("/search", productController.search);
-
-// filter by product category
-router.get("/filter", productController.filterByCategory);
+router.get("/search", productController.searchAndFilterProducts);
 
 module.exports = router;
