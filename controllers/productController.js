@@ -38,17 +38,56 @@ exports.createProduct = async (req, res) => {
 
 exports.getAllProducts = async (req, res) => {
   try {
-    const allProducts = await Product.find();
-    if (allProducts.length === 0) {
-      return res.status(404).json({ message: "No products" });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const search = req.query.search || "";
+    const category = req.query.category || "";
+
+    // Build the base query with category filter
+    const baseQuery = {};
+    // if (category) {
+    //   baseQuery.category = { $regex: new RegExp(`^${category}$`, 'i') };
+    // }
+    if (category) {
+      const categoryArray = category.split(",").map((cat) => cat.trim());
+      baseQuery.category = { $in: categoryArray };
     }
-    res
-      .status(200)
-      .json({ message: "Products fetched successfully", allProducts });
+
+    // If search is provided, add it to the existing filter
+    const finalQuery = { ...baseQuery };
+    if (search) {
+      finalQuery.title = { $regex: search, $options: "i" };
+    }
+
+    const [products, total] = await Promise.all([
+      Product.find(finalQuery).skip(skip).limit(limit),
+      Product.countDocuments(finalQuery),
+    ]);
+
+    if (products.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No products found matching your criteria",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: products,
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(total / limit),
+        totalItems: total,
+        itemsPerPage: limit,
+      },
+    });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error fetching products", error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Error fetching products",
+      error: error.message,
+    });
   }
 };
 
@@ -56,7 +95,6 @@ exports.getAllProducts = async (req, res) => {
 exports.getProductById = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(id);
     const product = await Product.findById(id);
     if (!product) {
       return res.status(404).json({ message: "No product found" });
@@ -81,14 +119,14 @@ exports.updateProductById = async (req, res) => {
       return res.status(404).json({ error: "Product not found" });
     }
 
-     // Prepare update data
+    // Prepare update data
     const updateData = { title, description, price, category };
 
     // Handle image replacement (optional)
     if (req.file) {
       // Upload new image to Cloudinary
       const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: 'products',
+        folder: "products",
       });
 
       // Clean up local file
@@ -103,7 +141,9 @@ exports.updateProductById = async (req, res) => {
       runValidators: true,
     });
 
-    res.status(200).json({ message: "Product updated", product: updatedProduct });
+    res
+      .status(200)
+      .json({ message: "Product updated", product: updatedProduct });
   } catch (error) {
     console.error("Error updating product:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -111,7 +151,7 @@ exports.updateProductById = async (req, res) => {
 };
 
 // delete product by id
-exports.deleteProductById = async (req,res) => {
+exports.deleteProductById = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -121,12 +161,17 @@ exports.deleteProductById = async (req,res) => {
       return res.status(404).json({ error: "Product not found" });
     }
 
-    res.status(200).json({ message: "Product deleted successfully", product: deletedProduct });
+    res
+      .status(200)
+      .json({
+        message: "Product deleted successfully",
+        product: deletedProduct,
+      });
   } catch (error) {
     console.error("Error deleting product:", error);
     res.status(500).json({ error: "Internal server error" });
   }
-}
+};
 
 //search and filter
 exports.searchAndFilterProducts = async (req, res) => {
@@ -138,13 +183,13 @@ exports.searchAndFilterProducts = async (req, res) => {
     }
 
     // Handle multiple comma-separated search terms
-    const terms = query.split(',').map(term => term.trim());
+    const terms = query.split(",").map((term) => term.trim());
 
     const orConditions = [];
 
-    terms.forEach(term => {
-      orConditions.push({ title: { $regex: term, $options: 'i' } });
-      orConditions.push({ category: { $regex: term, $options: 'i' } });
+    terms.forEach((term) => {
+      orConditions.push({ title: { $regex: term, $options: "i" } });
+      orConditions.push({ category: { $regex: term, $options: "i" } });
     });
 
     const products = await Product.find({ $or: orConditions });
@@ -153,6 +198,15 @@ exports.searchAndFilterProducts = async (req, res) => {
   } catch (error) {
     console.error("Error searching products:", error);
     res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+exports.getAllCategoriesName = async (req, res) => {
+  try {
+    const categories = await Product.distinct("category");
+    res.json(categories);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch categories" });
   }
 };
 
