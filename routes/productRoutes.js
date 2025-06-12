@@ -21,4 +21,7 @@ router.delete("/delete/:id", productController.deleteProductById);
 // search by product category
 router.get("/search", productController.searchAndFilterProducts);
 
+// get all categories names
+router.get('/categories',productController.getAllCategoriesName);
+
 module.exports = router;
