@@ -29,7 +29,7 @@ exports.createProduct = async (req, res) => {
 
     await product.save();
 
-    res.status(201).json({ message: "Product created successfully", product });
+    res.status(201).json({ message: "Product created successfully", success: true, product });
   } catch (error) {
     console.error("Error creating product:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -39,16 +39,14 @@ exports.createProduct = async (req, res) => {
 exports.getAllProducts = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = 8;
     const skip = (page - 1) * limit;
     const search = req.query.search || "";
     const category = req.query.category || "";
 
     // Build the base query with category filter
     const baseQuery = {};
-    // if (category) {
-    //   baseQuery.category = { $regex: new RegExp(`^${category}$`, 'i') };
-    // }
+    
     if (category) {
       const categoryArray = category.split(",").map((cat) => cat.trim());
       baseQuery.category = { $in: categoryArray };
